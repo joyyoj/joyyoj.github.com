@@ -1,0 +1,124 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>设置HIVE的元数据库 &mdash; 孙尚椿的个人博客</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="../_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/translations.js"></script>
+    <script type="text/javascript" src="../../_static/searchtools.js"></script>
+    <link rel="top" title="孙尚椿的个人博客" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>导航</h3>
+      <ul></pre>
+<ul> 
+    <li><a href="/index.html">博文目录</a> |</li>
+    <li><a href="/life.html">日常生活</a></li>
+    <li><a href="/links.html">常见链接</a></li>
+    <li><a href="/resume.html">关于作者</a> |</li>
+</ul>
+ 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="hive">
+<h1>设置HIVE的元数据库<a class="headerlink" href="#hive" title="永久链接至标题">¶</a></h1>
+<div class="highlight-sql"><div class="highlight"><pre><span class="o">&lt;</span><span class="n">property</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span><span class="n">javax</span><span class="p">.</span><span class="n">jdo</span><span class="p">.</span><span class="k">option</span><span class="p">.</span><span class="n">ConnectionURL</span><span class="o">&lt;/</span><span class="n">name</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="n">jdbc</span><span class="p">:</span><span class="n">mysql</span><span class="p">:</span><span class="o">//</span><span class="n">hadooptest</span><span class="p">:</span><span class="mi">3306</span><span class="o">/</span><span class="n">hive</span><span class="o">?</span><span class="n">useUnicode</span><span class="o">=</span><span class="k">true</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">createDatabaseIfNotExist</span><span class="o">=</span><span class="k">true</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">characterEncoding</span><span class="o">=</span><span class="n">UTF</span><span class="o">-</span><span class="mi">8</span><span class="o">&lt;/</span><span class="n">value</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">description</span><span class="o">&gt;</span><span class="n">JDBC</span> <span class="k">connect</span> <span class="n">string</span> <span class="k">for</span> <span class="n">a</span> <span class="n">JDBC</span> <span class="n">metastore</span><span class="o">&lt;/</span><span class="n">description</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">property</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>通过配置mysql的访问控制，可以有效的指定能够访问到你的数据库的ip范围。</p>
+<p>root到你的mysql</p>
+<div class="highlight-sql"><pre>mysql -u root -h（mysql的地址） -P（监听端口） -p</pre>
+</div>
+<p>输入密码，进入mysql控制台，输入如下指令</p>
+<div class="highlight-sql"><div class="highlight"><pre><span class="k">grant</span> <span class="k">all</span> <span class="k">privileges</span> <span class="k">on</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">&#39;用户名&#39;</span><span class="o">@</span><span class="s1">&#39;白名单&#39;</span> <span class="n">identified</span> <span class="k">by</span> <span class="s1">&#39;密码&#39;</span>
+
+<span class="n">flush</span> <span class="k">privileges</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>(其中用户名是允许访问mysql的用户名，密码是对应用户的密码)</p>
+<p>白名单内容可以如下：</p>
+<p>% 表示所有ip可以访问；</p>
+<p>也可以指定单个ip，如：10.81.7.80</p>
+<p>或指定ip段，如：10.81.7.%</p>
+<p>也可以是域名、机器名等；</p>
+<p>上述语句的效果是在mysql的默认数据库 mysql中的user表插入或修改一条记录~</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<style>
+#disqus_thread
+{
+  width:49%;
+  MARGIN-RIGHT: auto;
+  MARGIN-LEFT: auto;
+  #background:#CC8F33;
+  COLOR:#33FF00;
+  vertical-align:middle;
+  line-height:200px;
+}
+</style>
+    <div id="disqus_thread">
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'joyyoj'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div>
+
+
+
+  </body>
+</html>

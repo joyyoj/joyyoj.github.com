@@ -1,0 +1,137 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>ScannerContext &mdash; 孙尚椿的个人博客</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="../_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/translations.js"></script>
+    <script type="text/javascript" src="../../_static/searchtools.js"></script>
+    <link rel="top" title="孙尚椿的个人博客" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>导航</h3>
+      <ul></pre>
+<ul> 
+    <li><a href="/index.html">博文目录</a> |</li>
+    <li><a href="/life.html">日常生活</a></li>
+    <li><a href="/links.html">常见链接</a></li>
+    <li><a href="/resume.html">关于作者</a> |</li>
+</ul>
+ 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="scannercontext">
+<h1>ScannerContext<a class="headerlink" href="#scannercontext" title="永久链接至标题">¶</a></h1>
+<p>这个类抽象了从IoMgr获取buffer的逻辑。每个实例被一个线程使用，因此非线程安全。
+每个HdfsScanner对象一个ScannerContext,而ScannerContext包含1个或者多个ScannerContext::Stream(对于列存储的文件，每个ScannerContext包含多个Stream), 每个Stream包含1个ScanRange。
+每个ScannerContext对应处理一个hdfs split</p>
+<p>与ScannerContext交互的主要有3个线程:</p>
+<div class="section" id="diskqueue">
+<h2>DiskQueue<a class="headerlink" href="#diskqueue" title="永久链接至标题">¶</a></h2>
+<p>每个DiskQueue对应一个diskid,内部维护一组排队的ReaderContext.
+ReaderContext</p>
+<p>// Internal per reader state. This object maintains a lot of state that is carefully
+// synchronized.  The reader maintains state across all disks as well as per disk state.
+// A scan range for the reader is on one of four states:
+// 1) PerDiskState&#8217;s unstarted_ranges: This range has only been queued
+//    and nothing has been read from it.
+// 2) ReaderContext&#8217;s <a href="#id1"><span class="problematic" id="id2">ready_to_start_ranges_</span></a>: This range is about to be started.
+//    As soon as the reader picks it up, it will move to the in_flight_ranges
+//    queue.
+// 3) PerDiskState&#8217;s in_flight_ranges: This range is being processed and will
+//    be read from the next time a disk thread picks it up.
+// 4) ScanRange&#8217;s outgoing ready buffers is full. We can&#8217;t read for this range
+//    anymore. We need the caller to pull a buffer off which will put this in
+//    the in_flight_ranges queue. These ranges are in the ReaderContext&#8217;s
+//    <a href="#id3"><span class="problematic" id="id4">blocked_ranges_</span></a> queue.
+//
+// If the scan range is read and does not get blocked on the outgoing queue, the
+// transitions are: 1 -&gt; 2 -&gt; 3.
+// If the scan range does get blocked, the transitions are
+// 1 -&gt; 2 -&gt; 3 -&gt; (4 -&gt; 3)*</p>
+<p>TODO</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">內容目录</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">ScannerContext</a><ul>
+<li><a class="reference internal" href="#diskqueue">DiskQueue</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<style>
+#disqus_thread
+{
+  width:49%;
+  MARGIN-RIGHT: auto;
+  MARGIN-LEFT: auto;
+  #background:#CC8F33;
+  COLOR:#33FF00;
+  vertical-align:middle;
+  line-height:200px;
+}
+</style>
+    <div id="disqus_thread">
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'joyyoj'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div>
+
+
+
+  </body>
+</html>

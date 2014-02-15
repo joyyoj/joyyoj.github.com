@@ -1,0 +1,204 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>Impala后端读取文件的实现 &mdash; 孙尚椿的个人博客</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="../_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/translations.js"></script>
+    <script type="text/javascript" src="../../_static/searchtools.js"></script>
+    <link rel="top" title="孙尚椿的个人博客" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>导航</h3>
+      <ul></pre>
+<ul> 
+    <li><a href="/index.html">博文目录</a> |</li>
+    <li><a href="/life.html">日常生活</a></li>
+    <li><a href="/links.html">常见链接</a></li>
+    <li><a href="/resume.html">关于作者</a> |</li>
+</ul>
+ 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="impala">
+<h1>Impala后端读取文件的实现<a class="headerlink" href="#impala" title="永久链接至标题">¶</a></h1>
+<div class="section" id="id1">
+<h2>Impala的系统架构<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h2>
+</div>
+<div class="section" id="be">
+<h2>be代码结构<a class="headerlink" href="#be" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li>service: 连接前端，并接受client的请求</li>
+<li>runtime: 运行时需要的类，包括coordinator, planfragment,datastream, mempool, tuple等</li>
+<li>exec: 主要是ExecNode及子类，还包括读各种文件的Scanner，目前Scanner还没有分离出读文件的和解析内容两层；</li>
+<li>exprs: 各种表达式，如tableref，case等。目前表达式没有抽象提取出函数，因此新增一个函数就需要新加一个expr；</li>
+<li>transport: Thrift SASL: Simple Authentication and Security Layer</li>
+<li>statestore: statestore, simplescheduler, statestoresubscribe等；</li>
+<li>codegen: 代码生成</li>
+</ul>
+<dl class="docutils">
+<dt>每个impalad都可以处理Query请求，而其他的impalad作为Backend，在实际执行时，</dt>
+<dd>每个impalad都可以作为接收Query，其他Impalad都是一个Query包含由Coordinator和多个PlanFragmentExecutor共同完成。
+PlanFramgent会发到Backend上执行</dd>
+</dl>
+</div>
+<div class="section" id="impalad">
+<h2>Impalad的启动流程<a class="headerlink" href="#impalad" title="永久链接至标题">¶</a></h2>
+<ul class="simple">
+<li>初始化LLVM，hdfs，jni，hbase，前端;</li>
+<li>启动ImpalaServer</li>
+<li>启动thriftserver，接受thrift请求</li>
+<li>启动ExecEnv</li>
+<li>启动webserver</li>
+<li>启动SubscriptionManager</li>
+<li>启动Scheduler</li>
+<li>向StateStore订阅，并注册回调函数SimpleScheduler::UpdateMembership，用于调度</li>
+</ul>
+<p>时提供当前可用的后端
+SubscriptionManager::RegisterService
+StateStore检查service是否存在，如果不存在，则建立一个新的serviceinstance
+检查客户端是否存在于这个serviceinstance的membership中，如果不存在，则添加一个
+SubscriptionMangaer::RegisterSubscription
+StateStore添加一个Subscriber，订阅这个service的membership，并注册回调函数
+MembershipCallback
+当有update回调时，更新impalaserver
+的membership状态，用于failure detector
+Impalad启动后，就可以接受query请求，也可以接受其他impalad的请求，执行一个PlanFragment</p>
+</div>
+<div class="section" id="coordinator-exec">
+<h2>Coordinator::Exec<a class="headerlink" href="#coordinator-exec" title="永久链接至标题">¶</a></h2>
+<ol class="arabic simple">
+<li>ComputScanRangeAssignment;</li>
+<li>ComputeFragmentExecParams;</li>
+</ol>
+<div class="section" id="conjuncts-expr">
+<h3>为什么需要Conjuncts？而Expr不够表达？<a class="headerlink" href="#conjuncts-expr" title="永久链接至标题">¶</a></h3>
+<p>CreateConjuncts</p>
+<blockquote>
+<div><blockquote>
+<div><a href="#id2"><span class="problematic" id="id3">设置plan_</span></a>;
+<a href="#id4"><span class="problematic" id="id5">plan_</span></a>-&gt;Prepare;
+设置ExchangeNode的sender数目
+对ScanNode设置ScanRange;
+设置data sink;
+设置profile;</div></blockquote>
+<p>}
+PlanFragmentExecutor::OpenInternal {</p>
+<blockquote>
+<div><p><a href="#id6"><span class="problematic" id="id7">plan_</span></a>-&gt;Open();
+while (true) :</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>GetNextInternal {</dt>
+<dd><dl class="first last docutils">
+<dt>while <a href="#id8"><span class="problematic" id="id9">undone_</span></a>:</dt>
+<dd><a href="#id10"><span class="problematic" id="id11">plan_</span></a>-&gt;GetNext();</dd>
+</dl>
+</dd>
+</dl>
+<p>}
+<a href="#id12"><span class="problematic" id="id13">sink_</span></a>-&gt;Send;</p>
+</div></blockquote>
+<p><a href="#id14"><span class="problematic" id="id15">sink_</span></a>-&gt;Close;</p>
+</div></blockquote>
+<p>}</p>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="impalacache">
+<h2>Impala的Cache策略<a class="headerlink" href="#impalacache" title="永久链接至标题">¶</a></h2>
+<p>TUniqueId fragment_instance_id,
+PlanNodeId dest_node_id,</p>
+<p>StreamControlBlock</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">內容目录</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Impala后端读取文件的实现</a><ul>
+<li><a class="reference internal" href="#id1">Impala的系统架构</a></li>
+<li><a class="reference internal" href="#be">be代码结构</a></li>
+<li><a class="reference internal" href="#impalad">Impalad的启动流程</a></li>
+<li><a class="reference internal" href="#coordinator-exec">Coordinator::Exec</a><ul>
+<li><a class="reference internal" href="#conjuncts-expr">为什么需要Conjuncts？而Expr不够表达？</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#impalacache">Impala的Cache策略</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<style>
+#disqus_thread
+{
+  width:49%;
+  MARGIN-RIGHT: auto;
+  MARGIN-LEFT: auto;
+  #background:#CC8F33;
+  COLOR:#33FF00;
+  vertical-align:middle;
+  line-height:200px;
+}
+</style>
+    <div id="disqus_thread">
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'joyyoj'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div>
+
+
+
+  </body>
+</html>

@@ -1,0 +1,268 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>Impala后端分析 &mdash; 孙尚椿的个人博客</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="../_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/translations.js"></script>
+    <script type="text/javascript" src="../../_static/searchtools.js"></script>
+    <link rel="top" title="孙尚椿的个人博客" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>导航</h3>
+      <ul></pre>
+<ul> 
+    <li><a href="/index.html">博文目录</a> |</li>
+    <li><a href="/life.html">日常生活</a></li>
+    <li><a href="/links.html">常见链接</a></li>
+    <li><a href="/resume.html">关于作者</a> |</li>
+</ul>
+ 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="impala">
+<h1>Impala后端分析<a class="headerlink" href="#impala" title="永久链接至标题">¶</a></h1>
+<div class="section" id="class">
+<h2>查询后端主要class介绍<a class="headerlink" href="#class" title="永久链接至标题">¶</a></h2>
+<div class="section" id="imaplaserver">
+<h3>ImaplaServer<a class="headerlink" href="#imaplaserver" title="永久链接至标题">¶</a></h3>
+<p>ImpalaServer是impalad运行时所有请求的入口，以TExecRequest为例，由ImpalaServer::QueryExecState 负责处理。TExecRequest中包含TQueryExecRequest，描述了Frontend解析SQL后，向Backend发送的查询请求。</p>
+<p>ImpalaServer::QueryExecState包含以下方法:</p>
+<ol class="arabic simple">
+<li>ImpalaServer::QueryExecState::Exec(TExecRequest* exec_request):</li>
+</ol>
+<p>对TQueryExecRequest进行基本检查，然后调用Coordinator的Exec()方法解析提交请求</p>
+<ol class="arabic simple" start="2">
+<li>ImpalaServer::QueryExecState::FetchRows(const int32_t max_rows, QueryResultSet* fetched_rows)</li>
+</ol>
+<p>先调用Coordinator::Wait()，阻塞等待，该调用结束，意味着若干查询结果已生成，通过ImpalaServer::QueryExecState::FetchNextBatch()调用Coordinator::GetNext()，获取一个小批量的结果，并按自己的处理能力，分批处理这些结果。</p>
+</div>
+<div class="section" id="coordinator">
+<h3>Coordinator<a class="headerlink" href="#coordinator" title="永久链接至标题">¶</a></h3>
+<ol class="arabic simple">
+<li>Coordinator::Exec()</li>
+</ol>
+<p>Coordinator在Exec(const TUniqueId&amp; query_id, TQueryExecRequest* request, const TQueryOptions&amp; query_options)方法中，根据收到的query_id和request，会计算产生一次查询相关的参数信息，保存在本地。</p>
+<ol class="arabic">
+<li><p class="first">记录query_id，保存在Coordinator::<a href="#id1"><span class="problematic" id="id2">query_id_</span></a></p>
+</li>
+<li><p class="first">从request中取出finalize_params，保存在Coordinator::<a href="#id3"><span class="problematic" id="id4">finalize_params_</span></a></p>
+</li>
+<li><p class="first">从request中取出query_globals，保存在Coordinator::<a href="#id5"><span class="problematic" id="id6">query_globals_</span></a></p>
+</li>
+<li><dl class="first docutils">
+<dt>Coordinator::ComputeFragmentExecParams(const TQueryExecRequest&amp; exec_request) 根据request计算出每个PlanFragment的执行参数，保存在Coordinator::fragment_exec_params_中</dt>
+<dd><dl class="first docutils">
+<dt>4.1 Coordinator::ComputeFragmentHosts(const TQueryExecRequest&amp; exec_request) 对每一个PlanFragment，根据request中输入数据所在的位置(per_node_scan_ranges)，得到执行查询的impalad的Host列表，保存在Coordinator::hosts中</dt>
+<dd><dl class="first last docutils">
+<dt>4.1.1 从PlanFragments的DAG的底层向上计算每个PlanFragment的执行节点。因为有些PlanFragment可以直接使用其子Fragment的执行节点执行。</dt>
+<dd><ol class="first last loweralpha simple">
+<li>若PlanFragment的partition.type == TPartitionType::UNPARTITIONED，说明它只能在一个impalad上执行，把它放在coordinator上执行</li>
+<li>称PlanFragment.plan按DFS序执行第一个被执行的节点（最左子节点，或根节点）为LeftmostNode，若LeftmostNode的查询类型是EXCHANGE_NODE（用于收集DAG下层的PlanFragment的数据)，且所有PlanFragment中存在一个PlanFragment，向当前LeftmostNode输出数据，则选择那个PlanFragment所在的hosts列表作为当前PlanFragment的执行节点。若LeftmostNode的类型是HDFS_SCAN_NODE或HBASE_SCAN_NODE，从LeftmostNode的scan_range_locations指定的一堆DataNode中，若DataNode上存在impalad，则选择该impalad执行，否则从所有impalad中，用Round-robin（轮询）算法选择一个impalad节点执行。在data_server_map中记录每个DataHost上的数据，由哪个impalad处理。</li>
+</ol>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="last">4.2 为4.1生成的hosts列表中每个THostPort生成一个全局唯一的instance_id。
+4.3 统计每个PlanFragment的输入源,记录向该PlanFragment中的EXCHANGE_NODE写入数据的PlanNode的instance_id,及向该PlanFragment写入数据的hosts的数目. 目前，StreamSink的type只能是TPartitionType::UNPARTITIONED,即PlanFragment只能通过广播的形式，将所有数据发送给所有下游PlanFragment。</p>
+</dd>
+</dl>
+</li>
+</ol>
+<blockquote>
+<div><ol class="arabic simple" start="5">
+<li>Coordinator::ComputeScanRangeAssignment(const TQueryExecRequest&amp; exec_request) 对每个PlanNode所需扫描的Range，计算扫描量，安排负责执行的物理节点
+5.1 对于scan_range_locations中每个TScanRangeLocation，根据scan_range计算大概的扫描量，从locations中选择目前扫描量最少的location，作为负责扫描该range的DataNode，并更新它的扫描量。
+5.2 从data_server_map中，找到负责扫描该DataNode的impalad，记录scan_range和impalad的对应关系</li>
+</ol>
+</div></blockquote>
+<ol class="arabic" start="6">
+<li><dl class="first docutils">
+<dt>通过ParallelExecutor并行调用Coordinator::ExecRemoteFragment(void* exec_state_arg)</dt>
+<dd><p class="first">6.1 通过impala-client，向每个PlanFragment所在机器发送请求，执行机根据请求构建PlanFragmentExecutor
+6.2 调用PlanFragmentExecutor的Prepare()方法，初始化执行过程</p>
+<blockquote class="last">
+<div><p>6.2.1 各种初始化
+6.2.2 通过LLVM生成执行代码
+6.2.3 设定扫描的Range，输出数据流等</p>
+</div></blockquote>
+</dd>
+</dl>
+</li>
+</ol>
+<p>7. 初始化ProgressUpdater progress_，后续用于收集执行状态
+4.4.2.2 Coordinator::Wait():
+Coordinator::Wait()中，调用PlanFragmentExecutor::Open()方法，阻塞等待远程的impalad返回。如果PlanFragmentExecutor中定义了sink，则Open()方法中即不断循环调用PlanFragmentExecutor::GetNext()，流式地获取数据，通过sink发送到下游。Coordinator::GetNext()调用PlanFragmentExecutor::GetNext()方法，并根据本机的处理能力，对流式返回的数据量做一些限制及意外处理。PlanFragmentExecutor::GetNext()每次从PlanNode中调用GetNext()获取一批数据，返回外层。</p>
+</div>
+<div class="section" id="execnode">
+<h3>ExecNode<a class="headerlink" href="#execnode" title="永久链接至标题">¶</a></h3>
+<p>ExecNode是各种PlanNode的基类，提供一些初始化、析构等公共方法，还有CreateTree方法，根据TQueryExecRequest中的TPlan，构建PlanNode Tree。</p>
+<p>目前PlanNode有7种：HDFS_SCAN_NODE、HBASE_SCAN_NODE、AGGREGATION_NODE、HASH_JOIN_NODE、EXCHANGE_NODE、SORT_NODE、MERGE_NODE，他们组合成PlanNode Tree，完成各种复杂的查询操作。</p>
+</div>
+<div class="section" id="diskiomgr">
+<h3>DiskIoMgr<a class="headerlink" href="#diskiomgr" title="永久链接至标题">¶</a></h3>
+<p>DiskIoMgr 负责管理,调度所有IO请求.每个PlanNode会申请一个或多个ReaderContext，每个负责一系列的ScanRange.有独立的队列。
+PlanNode通过DiskIoMgr的API，获得ScanRange(non-blocking)和读取数据(blocking)。DiskIoMgr有自己的工作线程，从本地磁盘或者HDFS读取数据。
+DiskIoMgr通过ReaderContext实例标识一个请求，用户通过RegisterReader()/UnregisterReader()申请、释放ReaderContext实例，通过GetNext()/Read()等方法操作ReaderContext实例，获取数据。</p>
+<p>DiskIoMgr可以理解成一个线程安全的生产者消费者管理器，管理两个层面的资源：</p>
+<ol class="arabic simple">
+<li>硬件资源：读数据的Reader实例的队列；可复用的空Buffers队列</li>
+<li>读取请求：描述查询请求的ScanRanges队列；已使用的Buffers队列</li>
+</ol>
+<p>磁盘工作线程，不断从空Buffers队列中取出Buffer，从ScanRanges队列中取出要处理的ScanRange；处理完成后，加入已使用的Buffers的队列。
+用户通过AddScanRanges()向ScanRanges队列插入新的ScanRange请求；通过GetNext()消费写有数据的Buffer；通过ReturnBuffer()将用完的Buffer返回空Buffers队列。</p>
+</div>
+<div class="section" id="datastreammgr">
+<h3>DataStreamMgr<a class="headerlink" href="#datastreammgr" title="永久链接至标题">¶</a></h3>
+<p>DataStreamMgr: 负责管理所有PlanNode间的输入输出流.
+impalad的ImpalaServer实例收到DataStream类型的数据包时，调用DataStreamMgr::AddData()写入数据，它根据fragment_id/node_id分发给它管理的DataStreamRecvr，ExchangeNode等用户通过DataStreamRecvr接收数据。</p>
+</div>
+<div class="section" id="scannode">
+<h3>ScanNode<a class="headerlink" href="#scannode" title="永久链接至标题">¶</a></h3>
+<div class="section" id="hdfsscannode">
+<h4>HdfsScanNode<a class="headerlink" href="#hdfsscannode" title="永久链接至标题">¶</a></h4>
+<blockquote>
+<div>HdfsScanNode负责从HDFS读取数据，反序列化，它启动一个DiskThread用于读取二进制数据，启动多个ScannerThread反序列化这些数据。Scanner是反序列化HDFS文件的实例，目前支持Txt、RCFile等各种格式，增加新的Scanner，可以支持OLAPEngine等。</div></blockquote>
+<div class="highlight-sql"><pre>Open()
+
+    GetDefaultConnect() // 建立HDFS的连接，初始化统计信息，
+
+    RegisterReader() // 初始化ReaderContext实例
+
+    add_thread(DiskThread())
+
+    IssueMoreRanges() // 初始化新的ScanRanges
+
+DiskThread():
+    io_mgr()-&gt;GetNext() // 获取一个已经写有数据的Buffer
+    // 找到获得的Buffer对应的ScanRange的Scanner
+    StartNewScannerThread(): // 启动Scanner线程读取Buffer
+            CreateScanner() // 根据HdfsPartition类型构造HdfsScanner
+            add_thread(new thread(ScannerThread))
+
+ScannerThread():
+    scanner-&gt;ProcessScanRange() // 调用Scanner处理Buffer中的信息
+
+    if 当前所有ScanRange都已完成:
+        IssueMoreRanges() 向DiskIoMgr添加新的ScanRange请求</pre>
+</div>
+</div>
+</div>
+<div class="section" id="aggregationnode">
+<h3>AggregationNode<a class="headerlink" href="#aggregationnode" title="永久链接至标题">¶</a></h3>
+<p>基于Hash的内存聚集，利用LLVM生成算子计算Hash值和聚集结果。</p>
+</div>
+<div class="section" id="hashjoinnode">
+<h3>HashJoinNode<a class="headerlink" href="#hashjoinnode" title="永久链接至标题">¶</a></h3>
+<p>支持INNER JOIN / LEFT OUTER JOIN / RIGHT OUTER JOIN / FULL OUTER JOIN / SEMI JOIN，但JOIN条件必须包含至少一个等值JOIN，即不支持Cross Join。</p>
+<p>HashJoinNode会有两路输入（分别称为左路和右路），每次HashJoinNode::Open()方法中，会先流式拉取右路的所有输出结果，存在内存中。然后从左路中流式拉取数据，对内存Hash表中的右路数据进行匹配。根据JOIN类型输出JOIN结果。</p>
+</div>
+<div class="section" id="exchangenode">
+<h3>ExchangeNode<a class="headerlink" href="#exchangenode" title="永久链接至标题">¶</a></h3>
+<p>负责接收其它Fragment的PlanNode的输出（可能跨网络）。Prepare()方法中，从DataStreamMgr中获取DataStreamRecvr的实例，在GetNext()中不断从DataStreamRecvr取数据。</p>
+</div>
+<div class="section" id="mergenode">
+<h3>MergeNode<a class="headerlink" href="#mergenode" title="永久链接至标题">¶</a></h3>
+<p>合并Fragment内所有上游PlanNode输出的结果。合并过程中，会根据每个PlanNode的Schema对数据进行Schema Change，输出成统一Schema的结果。</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">內容目录</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Impala后端分析</a><ul>
+<li><a class="reference internal" href="#class">查询后端主要class介绍</a><ul>
+<li><a class="reference internal" href="#imaplaserver">ImaplaServer</a></li>
+<li><a class="reference internal" href="#coordinator">Coordinator</a></li>
+<li><a class="reference internal" href="#execnode">ExecNode</a></li>
+<li><a class="reference internal" href="#diskiomgr">DiskIoMgr</a></li>
+<li><a class="reference internal" href="#datastreammgr">DataStreamMgr</a></li>
+<li><a class="reference internal" href="#scannode">ScanNode</a><ul>
+<li><a class="reference internal" href="#hdfsscannode">HdfsScanNode</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#aggregationnode">AggregationNode</a></li>
+<li><a class="reference internal" href="#hashjoinnode">HashJoinNode</a></li>
+<li><a class="reference internal" href="#exchangenode">ExchangeNode</a></li>
+<li><a class="reference internal" href="#mergenode">MergeNode</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<style>
+#disqus_thread
+{
+  width:49%;
+  MARGIN-RIGHT: auto;
+  MARGIN-LEFT: auto;
+  #background:#CC8F33;
+  COLOR:#33FF00;
+  vertical-align:middle;
+  line-height:200px;
+}
+</style>
+    <div id="disqus_thread">
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'joyyoj'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div>
+
+
+
+  </body>
+</html>

@@ -1,0 +1,139 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>closeOp &mdash; 孙尚椿的个人博客</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="../_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/translations.js"></script>
+    <script type="text/javascript" src="../../_static/searchtools.js"></script>
+    <link rel="top" title="孙尚椿的个人博客" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>导航</h3>
+      <ul></pre>
+<ul> 
+    <li><a href="/index.html">博文目录</a> |</li>
+    <li><a href="/life.html">日常生活</a></li>
+    <li><a href="/links.html">常见链接</a></li>
+    <li><a href="/resume.html">关于作者</a> |</li>
+</ul>
+ 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="closeop">
+<h1>closeOp<a class="headerlink" href="#closeop" title="永久链接至标题">¶</a></h1>
+<p>如果上一个文件结束，下一个文件开始？</p>
+<dl class="docutils">
+<dt>If InputFileChanged || !firstFetchHappened</dt>
+<dd>set up the fetch operator for the new input file.</dd>
+</dl>
+<p>For MultiSet a,b,c</p>
+<p>ProcessOp(tag, key, value):</p>
+<p>If inputFileChanged:</p>
+<blockquote>
+<div>&amp;&amp; firstFetchHappened:</div></blockquote>
+<p>// we need to first join and flush out data left by the previous file.</p>
+<dl class="docutils">
+<dt>If isNewKey(key):</dt>
+<dd><p class="first">nextKey = key;
+foundNextKeyGroup = true;
+nextGroupStorage.add(value);
+List&lt;Byte&gt; smallestPos = null;
+do {</p>
+<blockquote>
+<div>smallestPos = joinOneGroup();
+//jump out the loop if we need input from the big table</div></blockquote>
+<p class="last">} while (smallestPos.size() &gt; 0 &amp;&amp; !smallestPos.contains((byte)this.posBigTable));</p>
+</dd>
+</dl>
+<p>END</p>
+<p>candidateStorage[tag].add(value);</p>
+<p>joinOneGroup:</p>
+<p>smallestPos = findSmallestKey();</p>
+<p>1 a11 a12
+2 a21 a22
+3 a31 a32</p>
+<p>4 a41 a42
+5 a51 a52</p>
+<p>0 b01 b02
+1 b11 b12
+3 b31 b32</p>
+<p>5 b51 b52</p>
+<p>a b c</p>
+<p>a = findSmallest();</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<style>
+#disqus_thread
+{
+  width:49%;
+  MARGIN-RIGHT: auto;
+  MARGIN-LEFT: auto;
+  #background:#CC8F33;
+  COLOR:#33FF00;
+  vertical-align:middle;
+  line-height:200px;
+}
+</style>
+    <div id="disqus_thread">
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'joyyoj'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div>
+
+
+
+  </body>
+</html>

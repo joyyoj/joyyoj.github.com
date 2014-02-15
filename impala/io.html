@@ -1,0 +1,263 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>Impala IO/数据流分析 &mdash; 孙尚椿的个人博客</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="../_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/translations.js"></script>
+    <script type="text/javascript" src="../../_static/searchtools.js"></script>
+    <link rel="top" title="孙尚椿的个人博客" href="../index.html" />
+    <link rel="next" title="HiveQL简要说明" href="../hive/hql.html" />
+    <link rel="prev" title="Impala架构介绍" href="overview.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>导航</h3>
+      <ul></pre>
+<ul> 
+    <li><a href="/index.html">博文目录</a> |</li>
+    <li><a href="/life.html">日常生活</a></li>
+    <li><a href="/links.html">常见链接</a></li>
+    <li><a href="/resume.html">关于作者</a> |</li>
+</ul>
+ 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="impala-io">
+<h1>Impala IO/数据流分析<a class="headerlink" href="#impala-io" title="永久链接至标题">¶</a></h1>
+<div class="section" id="id1">
+<h2>总体流程<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h2>
+<p>当用户执行Query时，Query被翻译成执行计划，物理执行计划其实就是ExecNode组成的DAG图。这其中扫描数据由ScanNode完成。
+节点之间交互数据由ExchangeNode完成;</p>
+<p>在节点之间交互的数据流采用推的方式，具体而言:</p>
+<ul class="simple">
+<li>每一个PlanFragmentExecutor的计算节点完成计算后，通过DataSink主动将数据下推给下游节点；</li>
+<li>impalad的ImpalaServer实例收到DataStream类型的数据包时，调用DataStreamMgr::AddData()写入数据. 根据fragment_id/node_id分发给它管理的DataStreamRecvr,ExchangeNode等用户通过DataStreamRecvr接收数据。</li>
+<li>ExchangeNode在Prepare时创建DataStreamRecvr;
+ExchangeNode在GetNext时会调用DataStreamRecvr的GetBatch(阻塞操作)</li>
+</ul>
+<p>Impalad底层的读取文件的IO模型是典型的生产者-消费者模型,Scanner是消费者，而DiskIoMgr线程是生产者.</p>
+<ul class="simple">
+<li>Impalad在初始化环境时,将新建DiskIoMgr对象,并启动多个IoMgr线程(默认一块Disk一个IoMgr线程);
+IoMgr线程,从磁盘扫描数据;</li>
+<li>ScanNode调用Open时,负责将要读取的ScanRanges Add到DiskIoMgr中;并启用
+若干个Scanner线程读取数据. Scanner线程将调用GetBytes(阻塞), 然后处理bytes，物化Tuples;</li>
+<li>DiskIoMgr的线程在发现ReaderContext非空后，按照Round-Robined算法调度ReaderContext，读取数据;</li>
+</ul>
+<div class="section" id="impalahive">
+<h3>Impala与HIVE的数据流对比<a class="headerlink" href="#impalahive" title="永久链接至标题">¶</a></h3>
+<ul class="simple">
+<li>HIVE的每个Task内部执行时，算子树的求值是推的方式。如MapTask先执行MapOperator，通常是先TableScanOperator，
+然后将数据分给下游，如TableScanOperator-&gt;FilterOperator-&gt;SelectOperator-&gt;GroupbyOperator-&gt;ReduceSinkOperator；
+然后ReduceSinkOperator将数据输出给MapReduce框架，MapReduce框架在执行时，ReduceTask主动去拉取MapTask的输出。</li>
+<li>在Impala中，PlanFramgent相当于HIVE的一个Task，在PlanFrament的算子树求值时，下游节点调用GetNext向上游节点拉取，
+而PlanFragment执行完一个GetNext之后，就会把通过DataSink方式将RowBatch推送到其他PlanFragment；</li>
+</ul>
+<p>总结起来HIVE是算子树内部求值是推的方式，Task之间是拉的方式。而Impala则算子树求值是拉的方式，PlanFragment之间是推送的方式。
+这样的优势我能想到两个明显的优势:</p>
+<ul class="simple">
+<li>利用带宽更加有效;</li>
+<li>对于select * from table limit 10这样的语句，
+HIVE需要等待整个HadoopJob执行完成之后才可以输出结果，Impala只要Coordinator拿到10条记录后就可以Cancel掉其他后端。</li>
+</ul>
+</div>
+</div>
+<div class="section" id="impalaio">
+<h2>Impala底层读取IO的详细流程<a class="headerlink" href="#impalaio" title="永久链接至标题">¶</a></h2>
+<p>ImpalaServer在初始化环境时，创建ExecEnv对象</p>
+<div class="highlight-sql"><pre>ExecEnv的构造函数 {
+  新建各种对象，与IO相关的，主要包括DataStreamMgr,DiskIoMgr;
+  DiskIoMgr的构造函数 {
+    设置每个disk对应一个DiskQueue;
+    设置每个disk读取的线程数目为FLAGS_num_threads_per_disk;
+  }
+  调用disk_io_mgr的Init() {
+    For 每个disk_queue:
+      构造DiskQueue对象;
+      每个DiskQueue启动num_threads_per_disk个线程;
+
+    线程的主循环是ReadLoop :{
+      while (true) {
+        调用GetNextScanRange获取下一个要读的ScanRange: {
+          DiskQueue采用Round-Robined轮转算法，取出队首ReaderContext;
+          获取ReaderContext的要读取的ScanRange;
+          判断进程是否超内存限制;
+          判断Reader是否超内存限制;
+          If 进程超内存限制,调用GcIoBuffers();
+          If 依然超内存限制，就Reader-&gt;Cancel()
+          If reader是Canceled状态:
+            continue;
+          If reader下一个ScanRange为空并且unstarted_ranges队列非空:
+            将reader的unstarted_ranges队列取出一个ScanRange放入到&gt;
+            ready_to_start_ranges_队列;
+            // 这样做的主要目的在于节省GetNextScanRange等待时间
+          唤醒一个阻塞在读GetNextScanRange的线程;
+          将reader重新放回disk_queue的队列;这样线程可以处理其他ScanRange
+        }
+        GetFreeBuffer(reader);//分配max_reader_size_ byte
+        GetBufferDesc;
+        range-&gt;OpenScanRange //打开文件，然后fseek到要读取的offset;(如果hdfs_connection_为空，是本地读取)
+        更新Counter;
+        range-&gt;ReadFromScanRange //从打开的文件句柄中读取数据;
+      } // while true
+    }
+  }//Init
+}</pre>
+</div>
+</div>
+<div class="section" id="hdfsscannode">
+<h2>HdfsScanNode<a class="headerlink" href="#hdfsscannode" title="永久链接至标题">¶</a></h2>
+<div class="highlight-sql"><pre>Prepare
+  tuple_desc_=state-&gt;desc_tbl().GetTupleDescriptor();
+
+  collect all materialized (partition key and not) slots
+  // Finally, populate materialized_slots_ and partition_key_slots_ in the order that
+  the slots appear in the file.
+  Codegen Scanner需要的函数
+  设置当thread可用时启用的callback函数HdfsScanNode::ThreadTokenAvailableCb,至少要求一个线程
+ThreadTokenAvaliableCb的实现 {
+  只要有线程可启用，就启动Scanner线程。不过以下几种情况不用启动新线程:
+  1. ScanNode已经完成
+  2. 所有的Ranges已经被其他线程拿走 (?)
+  3. 剩余的Ranges &lt; 活跃的线程数
+  线程的主循环 {
+    while (true) {
+      disk_io_mgr获取下一个ScanRange;
+      创建新的Scanner对象来处理这个ScanRange;
+      scanner-&gt;Prepare;
+      scanner-&gt;ProcessSplit;
+      scanner-&gt;Close;
+    }
+  }
+}
+
+//Open时初始化hdfs的连接，同时会启用Scanner线程. Scanner将向DiskIOMgr的队列添加Splits
+Open(RuntimeState* state):
+  向disk_io_mgr注册Reader，传递hdfs_connections
+  调用ScanRange的每个Partition的PrepareExprs
+  初始化所有Scanner的Ranges</pre>
+</div>
+</div>
+<div class="section" id="basesequencescanner">
+<h2>BaseSequenceScanner<a class="headerlink" href="#basesequencescanner" title="永久链接至标题">¶</a></h2>
+<div class="highlight-sql"><pre>ProcessSplit:{
+  //对于每一个ScanRange,需要InitNewRange, ProcessRange
+  header = scan_node_-&gt;GetFileMetadata();
+  if (header_ == NULL)
+    ReadFileHeader(); // parsing header
+    scan_node_-&gt;SetFileMetadata();
+    scan_node_-&gt;AddDiskIoRanges();
+
+  InitNewRange;
+  // 第一条记录
+  if stream_-&gt;scan_range-&gt;offset() == 0 :
+    skip header;
+  else
+    skip to sync
+
+  do {
+    //处理当前的Range直到出错或者结束
+    //[要求在Data block的开始位置，这个通过sync marker来保证]
+    ProcessRange() {
+      while (!eof) {
+        GetRecord;
+        GetMemory;
+        如果当前slot需要物化,解析当前Record
+        否则，直接写入
+      }
+    }
+    如果不允许错误，退出;
+    否则,跳到下一个Sync
+  } while (!stream_-&gt;eosr());
+}</pre>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">內容目录</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Impala IO/数据流分析</a><ul>
+<li><a class="reference internal" href="#id1">总体流程</a><ul>
+<li><a class="reference internal" href="#impalahive">Impala与HIVE的数据流对比</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#impalaio">Impala底层读取IO的详细流程</a></li>
+<li><a class="reference internal" href="#hdfsscannode">HdfsScanNode</a></li>
+<li><a class="reference internal" href="#basesequencescanner">BaseSequenceScanner</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<style>
+#disqus_thread
+{
+  width:49%;
+  MARGIN-RIGHT: auto;
+  MARGIN-LEFT: auto;
+  #background:#CC8F33;
+  COLOR:#33FF00;
+  vertical-align:middle;
+  line-height:200px;
+}
+</style>
+    <div id="disqus_thread">
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'joyyoj'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div>
+
+
+
+  </body>
+</html>

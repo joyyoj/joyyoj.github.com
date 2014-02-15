@@ -1,0 +1,558 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>HIVE的数据类型/数据模型/对象模型 &mdash; 孙尚椿的个人博客</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="../_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/translations.js"></script>
+    <script type="text/javascript" src="../../_static/searchtools.js"></script>
+    <link rel="top" title="孙尚椿的个人博客" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>导航</h3>
+      <ul></pre>
+<ul> 
+    <li><a href="/index.html">博文目录</a> |</li>
+    <li><a href="/life.html">日常生活</a></li>
+    <li><a href="/links.html">常见链接</a></li>
+    <li><a href="/resume.html">关于作者</a> |</li>
+</ul>
+ 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="hive">
+<h1>HIVE的数据类型/数据模型/对象模型<a class="headerlink" href="#hive" title="永久链接至标题">¶</a></h1>
+<p>[HIVE API的JavaDoc](<a class="reference external" href="http://docs.hortonworks.com/HDPDocuments/HDP1/HDP-Win-1.1/ds_Hive/api/index.html">http://docs.hortonworks.com/HDPDocuments/HDP1/HDP-Win-1.1/ds_Hive/api/index.html</a>)</p>
+<div class="section" id="id1">
+<h2>数据模型<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h2>
+<p>HIVE有四种数据模型（表）：(内部)表、外部表、分区表和桶表。下面把thrift的重要接口定义罗列说明一下。</p>
+<div class="section" id="database">
+<h3>Database<a class="headerlink" href="#database" title="永久链接至标题">¶</a></h3>
+<p>Database是Table的命名空间，包含一组Table</p>
+<div class="highlight-sql"><pre>struct Database {
+  1: string name,
+  2: string description,
+  3: string locationUri,
+  4: map&lt;string, string&gt; parameters, // properties associated with the database
+  5: optional PrincipalPrivilegeSet privileges
+}</pre>
+</div>
+</div>
+<div class="section" id="table">
+<h3>Table<a class="headerlink" href="#table" title="永久链接至标题">¶</a></h3>
+<div class="highlight-sql"><pre>// table information
+struct Table {
+  1: string tableName,// name of the table
+  2: string dbName,   // database name ('default')
+  3: string owner,// owner of this table
+  4: i32 createTime,   // creation time of the table
+  5: i32 lastAccessTime,   // last access time (usually this will be filled from HDFS and shouldn't be relied on)
+  6: i32 retention,// retention time
+  7: StorageDescriptor sd,// storage descriptor of the table
+  8: list&lt;FieldSchema&gt; partitionKeys, // partition keys of the table. only primitive types are supported
+  9: map&lt;string, string&gt; parameters,   // to store comments or any other user level parameters
+  10: string viewOriginalText, // original view text, null for non-view
+  11: string viewExpandedText, // expanded view text, null for non-view
+  12: string tableType, // table type enum, e.g. EXTERNAL_TABLE
+  13: optional PrincipalPrivilegeSet privileges,
+}</pre>
+</div>
+</div>
+<div class="section" id="partition">
+<h3>Partition<a class="headerlink" href="#partition" title="永久链接至标题">¶</a></h3>
+<dl class="docutils">
+<dt>::</dt>
+<dd><dl class="first docutils">
+<dt>struct Partition {</dt>
+<dd>1: list&lt;string&gt; values // string value is converted to appropriate partition key type
+2: string   dbName,
+3: string   tableName,
+4: i32  createTime,
+5: i32  lastAccessTime,
+6: StorageDescriptor   sd,
+7: map&lt;string, string&gt; parameters,
+8: optional PrincipalPrivilegeSet privileges</dd>
+</dl>
+<p class="last">}</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="index">
+<h3>Index<a class="headerlink" href="#index" title="永久链接至标题">¶</a></h3>
+<dl class="docutils">
+<dt>::</dt>
+<dd><dl class="first docutils">
+<dt>struct Index {</dt>
+<dd>1: string   indexName, // unique with in the whole database namespace
+2: string   indexHandlerClass, // reserved
+3: string   dbName,
+4: string   origTableName,
+5: i32  createTime,
+6: i32  lastAccessTime,
+7: string   indexTableName,
+8: StorageDescriptor   sd,
+9: map&lt;string, string&gt; parameters,
+10: bool deferredRebuild</dd>
+</dl>
+<p class="last">}</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="storagedescriptor">
+<h3>StorageDescriptor<a class="headerlink" href="#storagedescriptor" title="永久链接至标题">¶</a></h3>
+<p>描述一张表的物理存储</p>
+<div class="highlight-sql"><pre>struct StorageDescriptor {
+  1: list&lt;FieldSchema&gt; cols,  // required (refer to types defined above)
+  2: string location, // defaults to &lt;warehouse loc&gt;/&lt;db loc&gt;/tablename
+  3: string inputFormat,  // SequenceFileInputFormat (binary) or TextInputFormat`  or custom format
+  4: string outputFormat, // SequenceFileOutputFormat (binary) or IgnoreKeyTextOutputFormat or custom format
+  5: bool   compressed,   // compressed or not
+  6: i32numBuckets,   // this must be specified if there are any dimension columns
+  7: SerDeInfoserdeInfo,  // serialization and deserialization information
+  8: list&lt;string&gt; bucketCols, // reducer grouping columns and clustering columns and bucketing columns`
+  9: list&lt;Order&gt;  sortCols,   // sort order of the data in each bucket
+  10: map&lt;string, string&gt; parameters, // any user supplied key value hash
+  11: optional SkewedInfo skewedInfo, // skewed information
+  12: optional bool   storedAsSubDirectories   // stored as subdirectories or not
+}</pre>
+</div>
+</div>
+<div class="section" id="fieldschema">
+<h3>FieldSchema<a class="headerlink" href="#fieldschema" title="永久链接至标题">¶</a></h3>
+<div class="highlight-sql"><pre>struct FieldSchema {
+  1: string name, // name of the field
+  2: string type,
+  3: string comment
+}</pre>
+</div>
+</div>
+<div class="section" id="serdeinfo">
+<h3>SerdeInfo<a class="headerlink" href="#serdeinfo" title="永久链接至标题">¶</a></h3>
+<p>// This object holds the information needed by SerDes</p>
+<div class="highlight-sql"><pre>struct SerDeInfo {
+  1: string name,   // name of the serde, table name by default
+  2: string serializationLib,   // usually the class that implements the extractor &amp; loader
+  3: map&lt;string, string&gt; parameters // initialization parameters
+}</pre>
+</div>
+</div>
+</div>
+<div class="section" id="column">
+<h2>Column支持哪些数据类型<a class="headerlink" href="#column" title="永久链接至标题">¶</a></h2>
+<p>Hive使用TypeInfo描述数据类型，目前支持5种类型.</p>
+<ol class="arabic simple">
+<li>Primitive</li>
+<li>List</li>
+<li>Map</li>
+<li>Struct</li>
+<li>Union</li>
+</ol>
+<p>具体的定义如下（只列出get接口）</p>
+<div class="highlight-sql"><pre>public abstract class TypeInfo implements Serializable {
+  public abstract Category getCategory();
+  public abstract String getTypeName();
+}
+public final class PrimitiveTypeInfo extends TypeInfo implements Serializable {
+  public PrimitiveCategory getPrimitiveCategory();
+  public Class&lt;?&gt; getPrimitiveWritableClass();
+  public Class&lt;?&gt; getPrimitiveJavaClass();
+}
+    public final class MapTypeInfo extends TypeInfo implements Serializable {
+  public TypeInfo getMapKeyTypeInfo()；
+  public TypeInfo getMapValueTypeInfo()；
+}
+public final class ListTypeInfo extends TypeInfo implements Serializable {
+  public TypeInfo getListElementTypeInfo();
+}
+public final class StructTypeInfo extends TypeInfo implements Serializable {
+  public ArrayList&lt;String&gt; getAllStructFieldNames();
+  public ArrayList&lt;TypeInfo&gt; getAllStructFieldTypeInfos();
+  public TypeInfo getStructFieldTypeInfo(String field);
+}
+public class UnionTypeInfo extends TypeInfo implements Serializable {
+  public List&lt;TypeInfo&gt; getAllUnionObjectTypeInfos();
+}</pre>
+</div>
+<p>union类型稍微提一下，union与c的union相似，即在同一时间点，只能有一个指定的数据类型</p>
+<div class="highlight-sql"><pre>CREATE TABLE union_test(value UNIONTYPE&lt;int, array&lt;string&gt;, struct&lt;a:int,b:string&gt;, map&lt;string, string&gt;&gt;);
+SELECT value FROM union_test;
+{0:1}
+{1:["val1","val2"]}
+    {2:{"a":1,"b":"val"}}
+    {3:{"key":"value","x":"y"}}</pre>
+</div>
+<p>对于这些复合类型，有相应的UDF来创建，包括：array,map,struct,named_struct,create_union。</p>
+</div>
+<div class="section" id="id2">
+<h2>复杂数据类型的支持<a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h2>
+<p>从数据类型可以看出，hive支持嵌套struct、array、map等复杂结构。那么HIVE是如何实现的？
+例如：`select a.b, key[0] from src; select a+b from src group by a+b;...`</p>
+<div class="section" id="id3">
+<h3>类型检查<a class="headerlink" href="#id3" title="永久链接至标题">¶</a></h3>
+<p>TypeCheck</p>
+<div class="highlight-sql"><pre>// select a+b, count(1) from T group by a+b;
+// a+b在group by时，处理过，因此RowResolver时已经包含a+b
+processGroupby
+if (.) {
+        Column.Const ExprFieldDesc
+        ColumnInfo info = get(tableAlias);
+}</pre>
+</div>
+<p>如何生成相应的ExprNodeDesc？</p>
+<p>2    =&gt; ExprConstantDesc</p>
+<p>a    =&gt; ExprColumnDesc</p>
+<p>a.b  =&gt; ExprFieldDesc</p>
+<p>a[0] =&gt; ExprGenericFuncDesc</p>
+<p><strong>问题</strong></p>
+<ol class="arabic simple">
+<li>语法解析，构建AST？</li>
+<li>语义分析中，如何处理[]?</li>
+<li>语义分析中，如何.？与dbName.tableName.columnName与嵌套结构的struct如何区分？</li>
+<li>运行时如何获取这些类型信息？</li>
+</ol>
+<p>问题4先解答：
+编译OK之后，进行运行，那么如何传递TypeInfo信息给Task？
+HIVE内部有个自己的TypeInfoParser来解析TYPE字符串；</p>
+<p>serdeParams.columnTypes -&gt; columnType -&gt;
+columTypes从FieldSchema中来。</p>
+<p>对于中间结果，它的FieldSchema又如何生成？
+PlanUtils.getFieldSchemasFromRowSchema(parent.getSchema(), &#8220;temporarycol&#8221;)</p>
+<p>那么关键的问题在于RowSchema如何生成？</p>
+<p>每个Operator都有一个RowSchema；RS的RowSchema</p>
+<p>显然，如果是select算子，则找出outputCols的则它的RowSchema？
+如何知道OutputCols有哪些？</p>
+<p>#### Parser</p>
+<p>首先，为了支持上述的语法解析，Hive.g的部分定义如下：</p>
+<blockquote>
+<div><blockquote>
+<div>precedenceFieldExpression</div></blockquote>
+<p>:
+atomExpression ((LSQUARE^ expression RSQUARE!) | (DOT^ Identifier))*
+;</p>
+<p>atomExpression
+:
+KW_NULL -&gt; TOK_NULL
+| constant
+| function
+| castExpression
+| caseExpression
+| whenExpression
+| tableOrColumn
+| LPAREN! expression RPAREN!
+;</p>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="id4">
+<h2>类型检查、转换<a class="headerlink" href="#id4" title="永久链接至标题">¶</a></h2>
+<p>HIVE引入几个数据结构。</p>
+<p>FieldSchema
+ColumnInfo
+RowSchema
+RowResolver
+ColumnInfo</p>
+<div class="highlight-sql"><pre>class ColumnInfo {
+    String internalName;
+            ObjectInspector objectInspector;
+    String tabAlias;
+    boolean isVirtualCol;
+    boolean isHiddenVirtualCol;
+}
+    class RowSchema implements Serializable {
+    ArrayList&lt;ColumnInfo&gt; signature;
+}</pre>
+</div>
+<p>在类型检查时，TypeCheckProcFactory提供了几个Processor来处理：</p>
+<p>NullExprProcessor;
+NumberExprProcessor;
+StringExprProcessor;
+BoolExprProcessor;
+ColumnExprProcessor;
+DefaultExprProcessor；//处理function</p>
+<p><strong>问题</strong></p>
+<p>1. 到此为止，我们知道给定输入的RowSchema，得到相应的ExprNodeDesc。例如select算子，我们知道要选择字段的类型，但是对于Operator之间如何传递？
+1. RowSchema和RowResolver什么关系？</p>
+<p>RowSchema可以从RowResolver中生成。RowResolver维护了tableAlias,columnAlias,ColumnInfo
+internalName -&gt; alias的关系维护等；
+在算子层：操作符之间的出入schema由RowResolver完成传递；
+RowResolver如何维护？显然从genTablePlan时，获取得到Table对应的ObjectInspector(此时必然是StructObjectInspector），获取每一列的类型信息；
+【不妥之处：从SerdeParams中获取】</p>
+<p>getOpParseCtx
+Operator的ParseContext中包含了每个Operator与RowResolver的映射关系；</p>
+<p>如果是FileSinkOperator、CommonJoinOperator？</p>
+<p>public ColumnInfo(String internalName, TypeInfo type, String tabAlias, boolean isVirtualCol)</p>
+<p>事实上HIVE不支持dbname.tablename.columnName，即只支持columnOrXPath, tableName.columnOrXPath；</p>
+<p>在函数层：操作符之间的出入的schema由ObjectInspector；</p>
+<p>如何检查函数的参数是否正确？由UDF来保证，UDF能够返回ObjectInspector；</p>
+<p>描述符：ExprNodeDesc</p>
+<p>HIVE支持数据类型的隐式转换。如:</p>
+<blockquote>
+<div>insert into table string_table
+select i32 as key from src;</div></blockquote>
+<p>HIVE的union all如何处理？</p>
+<div class="section" id="typeinfo">
+<h3>TypeInfo<a class="headerlink" href="#typeinfo" title="永久链接至标题">¶</a></h3>
+<div class="section" id="id5">
+<h4>对象模型<a class="headerlink" href="#id5" title="永久链接至标题">¶</a></h4>
+</div>
+</div>
+</div>
+<div class="section" id="objectinspector">
+<h2>ObjectInspector<a class="headerlink" href="#objectinspector" title="永久链接至标题">¶</a></h2>
+<p>HIVE的运行时支持多种对象模型，ObjectInspector的引入的主要意义在于提供了对Object的统一访问方式，换句话说，它屏蔽了不同对象的存储细节。目前有两种对象模型的实现：</p>
+<ol class="arabic simple">
+<li>Java的对象模型（Thrift或者原生Java）</li>
+<li>Hadoop的对象模型（Writable)</li>
+</ol>
+<p>接口定义</p>
+<div class="highlight-sql"><pre>public interface ObjectInspector {
+        public static enum Category {
+        PRIMITIVE, LIST, MAP, STRUCT, UNION
+        };
+        String getTypeName();
+        Category getCategory();
+}</pre>
+</div>
+</div>
+<div class="section" id="primitiveobjectinspector">
+<h2>PrimitiveObjectInspector<a class="headerlink" href="#primitiveobjectinspector" title="永久链接至标题">¶</a></h2>
+<div class="highlight-sql"><pre>public interface PrimitiveObjectInspector extends ObjectInspector {
+  public static enum PrimitiveCategory {
+VOID, BOOLEAN, BYTE, SHORT, INT, LONG, FLOAT, DOUBLE, STRING, TIMESTAMP, BINARY, UNKNOWN
+  };
+
+  PrimitiveCategory getPrimitiveCategory();
+
+  /**
+   * Get the Primitive Writable class which is the return type of
+   * getPrimitiveWritableObject() and copyToPrimitiveWritableObject().
+   */
+  Class&lt;?&gt; getPrimitiveWritableClass();
+
+  /**
+   * Return the data in an instance of primitive writable Object. If the Object
+   * is already a primitive writable Object, just return o.
+   */
+  Object getPrimitiveWritableObject(Object o);
+
+  /**
+   * Get the Java Primitive class which is the return type of
+   * getJavaPrimitiveObject().
+   */
+  Class&lt;?&gt; getJavaPrimitiveClass();
+
+  /**
+   * Get the Java Primitive object.
+   */
+  Object getPrimitiveJavaObject(Object o);
+
+  /**
+   * Get a copy of the Object in the same class, so the return value can be
+   * stored independently of the parameter.
+   *
+   * If the Object is a Primitive Java Object, we just return the parameter
+   * since Primitive Java Object is immutable.
+   */
+  Object copyObject(Object o);
+
+  /**
+   * Whether the ObjectInspector prefers to return a Primitive Writable Object
+   * instead of a Primitive Java Object. This can be useful for determining the
+   * most efficient way to getting data out of the Object.
+   */
+  boolean preferWritable();
+}</pre>
+</div>
+<p>StructObjectInspector</p>
+<div class="highlight-sql"><pre>public abstract class StructObjectInspector implements ObjectInspector {
+  //Returns all the fields.
+  public abstract List&lt;? extends StructField&gt; getAllStructFieldRefs();
+
+  //Look up a field.
+  public abstract StructField getStructFieldRef(String fieldName);
+
+  public abstract Object getStructFieldData(Object data, StructField fieldRef);
+  public abstract List&lt;Object&gt; getStructFieldsDataAsList(Object data);
+}
+
+public interface StructField {
+  //Get the name of the field. The name should be always in lower-case.
+  String getFieldName();
+
+  //Get the ObjectInspector for the field.
+  ObjectInspector getFieldObjectInspector();
+
+  String getFieldComment();
+}</pre>
+</div>
+<p>MapObjectInspector</p>
+<div class="highlight-sql"><pre>public interface MapObjectInspector extends ObjectInspector {
+  ObjectInspector getMapKeyObjectInspector();
+  ObjectInspector getMapValueObjectInspector();
+  Object getMapValueElement(Object data, Object key);
+
+  Map&lt;?, ?&gt; getMap(Object data);
+
+  int getMapSize(Object data);
+}</pre>
+</div>
+<p>ListObjectInspector</p>
+<div class="highlight-sql"><pre>public interface ListObjectInspector extends ObjectInspector {
+  // Methods that does not need a data object **
+  ObjectInspector getListElementObjectInspector();
+  Object getListElement(Object data, int index);
+  int getListLength(Object data);
+
+  List&lt;?&gt; getList(Object data);
+}</pre>
+</div>
+</div>
+<div class="section" id="id6">
+<h2>运行时如何使用ObjectInspector<a class="headerlink" href="#id6" title="永久链接至标题">¶</a></h2>
+<div class="highlight-sql"><pre>  //反序列化得到行
+  Object row = serDe.deserialize(t);
+  StructObjectInspector oi = (StructObjectInspector) serDe
+  .getObjectInspector();
+  List&lt;? extends StructField&gt; fieldRefs = oi.getAllStructFieldRefs();
+  //获取每一列的信息
+  for (int i = 0; i &lt; fieldRefs.size(); i++) {
+Object fieldData = oi.getStructFieldData(row, fieldRefs.get(i));
+...
+  }</pre>
+</div>
+<p>从这个例子中，不难出，Hive将对行中列的读取和行的存储方式解耦和了，只有ObjectInspector清楚行的结构，但使用者并不知道存储的细节。 对于数据的使用者来说，只需要行的Object和相应的ObjectInspector，就能读取出每一列的对象。</p>
+<div class="section" id="id7">
+<h3>ObjectInspector有什么好处<a class="headerlink" href="#id7" title="永久链接至标题">¶</a></h3>
+<p>除了上文说的，ObjectInspector提供对象的统一访问接口，还负责获取TypeInfo。另外，可以实现惰性反序列化。</p>
+</div>
+<div class="section" id="id8">
+<h3>编译时也用了ObjectInspector<a class="headerlink" href="#id8" title="永久链接至标题">¶</a></h3>
+<p>HIVE支持用户自己配置serde lib，例如protobuf。列信息在serde的class中</p>
+<div class="highlight-sql"><pre>static List&lt;FieldSchema&gt; getFieldsFromDeserializer(String tableName, Deserializer deserializer) {
+        获取ObjectInspector；
+        根据ObjectInspector的类型获取Field的OI；
+        返回FieldSchema；
+}</pre>
+</div>
+<p>ObjectInspector的信息:
+TypeInfo getTypeInfoFromObjectInspector();</p>
+</div>
+</div>
+<div class="section" id="gentableplan">
+<h2>genTablePlan<a class="headerlink" href="#gentableplan" title="永久链接至标题">¶</a></h2>
+<p>tab.getDeserializer().getObjectInspector();</p>
+<p>待续...</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">內容目录</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">HIVE的数据类型/数据模型/对象模型</a><ul>
+<li><a class="reference internal" href="#id1">数据模型</a><ul>
+<li><a class="reference internal" href="#database">Database</a></li>
+<li><a class="reference internal" href="#table">Table</a></li>
+<li><a class="reference internal" href="#partition">Partition</a></li>
+<li><a class="reference internal" href="#index">Index</a></li>
+<li><a class="reference internal" href="#storagedescriptor">StorageDescriptor</a></li>
+<li><a class="reference internal" href="#fieldschema">FieldSchema</a></li>
+<li><a class="reference internal" href="#serdeinfo">SerdeInfo</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#column">Column支持哪些数据类型</a></li>
+<li><a class="reference internal" href="#id2">复杂数据类型的支持</a><ul>
+<li><a class="reference internal" href="#id3">类型检查</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id4">类型检查、转换</a><ul>
+<li><a class="reference internal" href="#typeinfo">TypeInfo</a><ul>
+<li><a class="reference internal" href="#id5">对象模型</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#objectinspector">ObjectInspector</a></li>
+<li><a class="reference internal" href="#primitiveobjectinspector">PrimitiveObjectInspector</a></li>
+<li><a class="reference internal" href="#id6">运行时如何使用ObjectInspector</a><ul>
+<li><a class="reference internal" href="#id7">ObjectInspector有什么好处</a></li>
+<li><a class="reference internal" href="#id8">编译时也用了ObjectInspector</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#gentableplan">genTablePlan</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<style>
+#disqus_thread
+{
+  width:49%;
+  MARGIN-RIGHT: auto;
+  MARGIN-LEFT: auto;
+  #background:#CC8F33;
+  COLOR:#33FF00;
+  vertical-align:middle;
+  line-height:200px;
+}
+</style>
+    <div id="disqus_thread">
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'joyyoj'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div>
+
+
+
+  </body>
+</html>

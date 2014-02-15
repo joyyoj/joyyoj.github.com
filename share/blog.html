@@ -1,0 +1,152 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>打造Rst的GitHub博客 &mdash; 孙尚椿的个人博客</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="../_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/translations.js"></script>
+    <script type="text/javascript" src="../../_static/searchtools.js"></script>
+    <link rel="top" title="孙尚椿的个人博客" href="../index.html" />
+    <link rel="prev" title="HiveQL简要说明" href="../hive/hql.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>导航</h3>
+      <ul></pre>
+<ul> 
+    <li><a href="/index.html">博文目录</a> |</li>
+    <li><a href="/life.html">日常生活</a></li>
+    <li><a href="/links.html">常见链接</a></li>
+    <li><a href="/resume.html">关于作者</a> |</li>
+</ul>
+ 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="rstgithub">
+<h1>打造Rst的GitHub博客<a class="headerlink" href="#rstgithub" title="永久链接至标题">¶</a></h1>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">date:</th><td class="field-body">2013-08-17</td>
+</tr>
+</tbody>
+</table>
+<p>之前的博客使用markdown写过几篇，不过最近发现rst更加方便，因此上午折腾了一把，打算改用rst来记录博客。</p>
+<p>我先是搜索了一把，找到 <a class="reference external" href="http://blog.xlarrakoetxea.org/posts/2012/10/creating-a-blog-with-pelican/">这篇博客</a>
+感觉挺好的。于是，我也打算用pelican来构建，可惜折腾了一个上午，始终没有达到预期效果。只好放弃，改用rst+sphinx来弄。
+默认的主题我不太喜欢，搜索了几个，最后决定使用 <a class="reference external" href="https://github.com/armstrong/armstrong_sphinx/">armstrong</a> 。(bootstrap也不错的)</p>
+<p>最后，我在layout.html中加上disqus的链接，虽然看起来有些唐突，好歹算是博客的功能都有了！</p>
+<p>写博客的流程如下</p>
+<div class="highlight-sql"><pre>#先在github上建库
+$ git clone git@github.com:user/blog.git
+$ cd ./blog
+#master分支下，提交改动
+$ git add .
+$ git commit -m "First post"
+$ git push origin master
+#添加gh-pages分支，并合并master改动，
+$ git branch gh-pages
+$ git checkout gh-pages
+$ git merge master
+#在gh-pages分支下生成html
+$ make html &amp;&amp; cp _build/html/* .
+$ git add .
+$ git commit -m "Publish hello world post"
+#发布到博客上
+$ git push origin gh-pages
+
+git 其他常用的操作
+Removing untracked files from your git working copy
+If you want to also remove directories, run git clean -f -d
+If you just want to remove ignored files, run git clean -f -X
+If you want to remove ignored as well as non-ignored files, run git clean -f -x</pre>
+</div>
+<div class="section" id="id2">
+<h2>帮助链接<a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h2>
+<p><a class="reference external" href="http://www.pythondoc.com/sphinx/rest.html">reStructuredText入门</a></p>
+<p><a class="reference external" href="http://docs.kissyui.com/1.3/docs/html/tutorials/tools/use-sphinx.html">sphinx使用文档</a></p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">內容目录</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">打造Rst的GitHub博客</a><ul>
+<li><a class="reference internal" href="#id2">帮助链接</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<style>
+#disqus_thread
+{
+  width:49%;
+  MARGIN-RIGHT: auto;
+  MARGIN-LEFT: auto;
+  #background:#CC8F33;
+  COLOR:#33FF00;
+  vertical-align:middle;
+  line-height:200px;
+}
+</style>
+    <div id="disqus_thread">
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'joyyoj'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div>
+
+
+
+  </body>
+</html>

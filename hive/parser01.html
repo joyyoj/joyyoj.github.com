@@ -1,0 +1,261 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>HIVE源码分析之编译（一） &mdash; 孙尚椿的个人博客</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="../_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/translations.js"></script>
+    <script type="text/javascript" src="../../_static/searchtools.js"></script>
+    <link rel="top" title="孙尚椿的个人博客" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>导航</h3>
+      <ul></pre>
+<ul> 
+    <li><a href="/index.html">博文目录</a> |</li>
+    <li><a href="/life.html">日常生活</a></li>
+    <li><a href="/links.html">常见链接</a></li>
+    <li><a href="/resume.html">关于作者</a> |</li>
+</ul>
+ 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="hive">
+<h1>HIVE源码分析之编译（一）<a class="headerlink" href="#hive" title="永久链接至标题">¶</a></h1>
+<div class="section" id="id1">
+<h2>前端编译的主要组成<a class="headerlink" href="#id1" title="永久链接至标题">¶</a></h2>
+<p>HIVE使用Antlr生成抽象语法树。Antlr主要包括：
+* Lexer： 文法分析器类。主要用于把读入的字节流根据规则分段。
+* Parser： 解析器类。主要用于处理经过 Lexer 处理后的各段。一些具体的操作都在这里。</p>
+<p>对应的代码为ql,主要包括:</p>
+<ul class="simple">
+<li>Compiler</li>
+<li>Parser</li>
+<li>TypeChecking</li>
+<li>Semantic Analysis</li>
+<li>Plan generation</li>
+<li>Task generation</li>
+<li>执行引擎</li>
+<li>Plan</li>
+</ul>
+<p>主要流程:</p>
+<ul class="simple">
+<li>生成AST抽象语法树；</li>
+<li>生成QB Block；</li>
+<li>生成逻辑算子树；</li>
+<li>逻辑算子树的优化；</li>
+<li>生成物理的执行计划；</li>
+<li>物理执行计划的优化；</li>
+</ul>
+<div class="section" id="compile">
+<h3>compile<a class="headerlink" href="#compile" title="永久链接至标题">¶</a></h3>
+<div class="section" id="genplan-qb-qb">
+<h4>genPlan (QB qb)<a class="headerlink" href="#genplan-qb-qb" title="永久链接至标题">¶</a></h4>
+<ol class="arabic">
+<li><p class="first">递归遍历子查询，生成子句的~plan，映射子句与对应的~OP；</p>
+</li>
+<li><p class="first">遍历~Table~，生成~TableScan~算子，映射表与对应的~OP；</p>
+</li>
+<li><p class="first">genLateralViewPlans</p>
+</li>
+<li><dl class="first docutils">
+<dt>处理~JOIN~算子</dt>
+<dd><blockquote class="first">
+<div><ul class="simple">
+<li>如果是~UNIQE JOIN，？</li>
+</ul>
+</div></blockquote>
+<ul class="last simple">
+<li>mergeJoinTree</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p class="first">genBodyPlan</p>
+</li>
+</ol>
+<div class="section" id="genbodyplan">
+<h5>genBodyPlan<a class="headerlink" href="#genbodyplan" title="永久链接至标题">¶</a></h5>
+<p>then
+called
+to
+handle
+WHERE-­‐
+GROUPBY-­‐ORDERBY-­‐SELECT
+clauses.
+– genFilterPlan()
+for
+WHERE
+clause
+– genGroupByPalnMapAgg1MR/2MR()
+for
+map-­‐side
+par:al
+aggrega:on
+– genGroupByPlan1MR/2MR()
+for
+reduce-­‐side
+aggrega:on
+– genSelectPlan()
+for
+SELECT-­‐clause
+– genReduceSink()
+for
+marking
+the
+boundary
+between
+map/
+reduce
+phases.
+– genFileSink()
+to
+store
+intermediate
+results</p>
+</div>
+</div>
+</div>
+<div class="section" id="id2">
+<h3>常见的查询语句<a class="headerlink" href="#id2" title="永久链接至标题">¶</a></h3>
+<p><strong>select</strong></p>
+<blockquote>
+<div>select * from src;
+&#8211;包含查询子句
+select a from (select key as a from src) tmp;</div></blockquote>
+<p><strong>limit</strong></p>
+<blockquote>
+<div>select k1 from src limit 1;</div></blockquote>
+<p><strong>where</strong></p>
+<blockquote>
+<div>select k1, k2 from src where key=1;</div></blockquote>
+<p><strong>实例分析1</strong></p>
+<blockquote>
+<div>select k1 from src where key &gt; 2 limit 1;</div></blockquote>
+<ul class="simple">
+<li>生成抽象语法树：</li>
+</ul>
+<p>![image](/images/hive/)</p>
+<p><strong>实例分析2</strong></p>
+<p>查询子句如何处理？</p>
+<blockquote>
+<div>select k from (select key as k from src);</div></blockquote>
+<p><strong>union all</strong></p>
+<blockquote>
+<div><dl class="docutils">
+<dt>select * from (</dt>
+<dd>select key, value from src1 union all select key, value from src2</dd>
+</dl>
+<p>) tmp;</p>
+</div></blockquote>
+<p><strong>distinct</strong></p>
+<blockquote>
+<div>select distinct key from src;</div></blockquote>
+<p><strong>group by</strong></p>
+<blockquote>
+<div>select count(*), count(1) from src limit 1;
+select key, count(*) from src group by key;
+select key, count(distinct value) from src group by key having key&gt;2;</div></blockquote>
+<p><strong>join</strong></p>
+<blockquote>
+<div>select src.key, src.value from src join src_tmp
+on src.key = src_tmp.key
+where src.value=&#8221;bcd&#8221;;</div></blockquote>
+<p>### Antlr
+###</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">內容目录</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">HIVE源码分析之编译（一）</a><ul>
+<li><a class="reference internal" href="#id1">前端编译的主要组成</a><ul>
+<li><a class="reference internal" href="#compile">compile</a><ul>
+<li><a class="reference internal" href="#genplan-qb-qb">genPlan (QB qb)</a><ul>
+<li><a class="reference internal" href="#genbodyplan">genBodyPlan</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id2">常见的查询语句</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<style>
+#disqus_thread
+{
+  width:49%;
+  MARGIN-RIGHT: auto;
+  MARGIN-LEFT: auto;
+  #background:#CC8F33;
+  COLOR:#33FF00;
+  vertical-align:middle;
+  line-height:200px;
+}
+</style>
+    <div id="disqus_thread">
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'joyyoj'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div>
+
+
+
+  </body>
+</html>

@@ -1,0 +1,180 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+
+    <title>Iris &mdash; 孙尚椿的个人博客</title>
+
+<meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;"/>
+
+
+    
+    <link rel="stylesheet" href="_static/rtd.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.4',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/translations.js"></script>
+    <script type="text/javascript" src="_static/searchtools.js"></script>
+    <link rel="top" title="孙尚椿的个人博客" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>导航</h3>
+      <ul></pre>
+<ul> 
+    <li><a href="/index.html">博文目录</a> |</li>
+    <li><a href="/life.html">日常生活</a></li>
+    <li><a href="/links.html">常见链接</a></li>
+    <li><a href="/resume.html">关于作者</a> |</li>
+</ul>
+ 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="iris">
+<h1>Iris<a class="headerlink" href="#iris" title="永久链接至标题">¶</a></h1>
+<div class="section" id="what-is-iris">
+<h2>What is iris?<a class="headerlink" href="#what-is-iris" title="永久链接至标题">¶</a></h2>
+<p>Iris is a <a class="reference external" href="http://getpelican.com">pelican</a> theme based on <a class="reference external" href="http://flask.pocoo.org/">Flask webpage</a>
+This theme is very simple and easy to read, perfect for a minimalist blog without much things and
+beautiful source code syntax (Thank you <a class="reference external" href="http://pygments.org/">pygments</a>!)
+Also uses various fonts:</p>
+<ul class="simple">
+<li>For social icons: <a class="reference external" href="http://fortawesome.github.com/Font-Awesome/">Font awesome</a></li>
+<li>For the title: <a class="reference external" href="http://www.google.com/webfonts/specimen/The+Girl+Next+Door">The girl next door</a></li>
+<li>For the headers: <a class="reference external" href="http://www.google.com/webfonts/specimen/Marcellus">Marcellus</a></li>
+<li>For the soure code: <a class="reference external" href="http://www.google.com/webfonts/specimen/Inconsolata">Inconsolata</a></li>
+</ul>
+</div>
+<div class="section" id="preview">
+<h2>Preview<a class="headerlink" href="#preview" title="永久链接至标题">¶</a></h2>
+<img alt="https://raw.github.com/gist/3885420/bbb0c9598f32a7913b16f4ea4c0308e8c701ef9b/iris_marcellus.png" class="align-center" src="https://raw.github.com/gist/3885420/bbb0c9598f32a7913b16f4ea4c0308e8c701ef9b/iris_marcellus.png" />
+</div>
+<div class="section" id="variables">
+<h2>Variables<a class="headerlink" href="#variables" title="永久链接至标题">¶</a></h2>
+<p>Some of the variables that could be used:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">DISQUS_SITENAME</span></tt>: For the disqus comments</li>
+<li><tt class="docutils literal"><span class="pre">EMAIL</span></tt>: For the email &#8220;mailto:&#8221;</li>
+</ul>
+<p>For the analytics we have two flavours, one is Go <a class="reference external" href="https://www.gosquared.com">Squared</a></p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">GOSQUARED_SITENAME</span></tt>: For the Go squared analytics</li>
+</ul>
+<p>And the other is <a class="reference external" href="https://www.google.com/analytics">Google analytics</a> Google analytics has various forms. The
+basic one is:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">GOOGLE_ANALYTICS_CODE</span></tt>: this is the code of GA, something similar to: <tt class="docutils literal"><span class="pre">UA-xxxxxxxx-y</span></tt></li>
+</ul>
+<p>If you have analytics across domains you can put this setting:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">GOOGLE_ANALYTICS_DOMAIN</span> <span class="pre">=</span> <span class="pre">&quot;xlarrakoetxea.org&quot;</span></tt></li>
+</ul>
+<p>And if you have upper domain level (com, org, co.uk...)</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">GOOGLE_ANALYTICS_DOMAIN_UP</span> <span class="pre">=</span> <span class="pre">True</span></tt></li>
+</ul>
+</div>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="永久链接至标题">¶</a></h2>
+<p>To install, go to your pelican theme directory and clone the repo. For
+example:</p>
+<div class="highlight-sql"><pre>$ cd /home/slok/.virtualenvs/blog/lib/python2.7/site-packages/pelican/themes/
+$ git clone https://github.com/slok/iris.git</pre>
+</div>
+<p>Set the variable <tt class="docutils literal"><span class="pre">THEME</span></tt> to <tt class="docutils literal"><span class="pre">iris</span></tt> in your pelican settings, like this:</p>
+<div class="highlight-sql"><div class="highlight"><pre><span class="n">THEME</span> <span class="o">=</span> <span class="ss">&quot;iris&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="永久链接至标题">¶</a></h2>
+<p>The theme navigation bar does a fade in if you scroll more than 300 pixels to
+increase the readability of an article.</p>
+<p>ReStructuredText creates <tt class="docutils literal"><span class="pre">tt</span></tt> with <tt class="docutils literal"><span class="pre">``something``</span></tt> that is equivalent to  markdown <tt class="docutils literal"><span class="pre">code</span></tt>
+that is created wit <tt class="docutils literal"><span class="pre">`something`</span></tt>. This renders inline source code. So I added <tt class="docutils literal"><span class="pre">tt</span></tt> to the
+css also, not only <tt class="docutils literal"><span class="pre">code</span></tt> like most themes. Example:</p>
+<img alt="https://raw.github.com/gist/3885420/4d7a8557780ab74c5ae797a4f6e82cbf11aec0c6/iris_inline.png" class="align-center" src="https://raw.github.com/gist/3885420/4d7a8557780ab74c5ae797a4f6e82cbf11aec0c6/iris_inline.png" />
+</div>
+<div class="section" id="license">
+<h2>License<a class="headerlink" href="#license" title="永久链接至标题">¶</a></h2>
+<p>This theme is under the <a class="reference external" href="http://opensource.org/licenses/bsd-3-clause">3 clause BSD license</a></p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">內容目录</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Iris</a><ul>
+<li><a class="reference internal" href="#what-is-iris">What is iris?</a></li>
+<li><a class="reference internal" href="#preview">Preview</a></li>
+<li><a class="reference internal" href="#variables">Variables</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#notes">Notes</a></li>
+<li><a class="reference internal" href="#license">License</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+<style>
+#disqus_thread
+{
+  width:49%;
+  MARGIN-RIGHT: auto;
+  MARGIN-LEFT: auto;
+  #background:#CC8F33;
+  COLOR:#33FF00;
+  vertical-align:middle;
+  line-height:200px;
+}
+</style>
+    <div id="disqus_thread">
+    <script type="text/javascript">
+        /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+        var disqus_shortname = 'joyyoj'; // required: replace example with your forum shortname
+
+        /* * * DON'T EDIT BELOW THIS LINE * * */
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div>
+
+
+
+  </body>
+</html>
