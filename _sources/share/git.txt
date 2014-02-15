@@ -36,3 +36,5 @@ git remote update
 git checkout -b hst-master hive/hst
 // push 远程分支
 git push hive HEAD:refs/for/hst
+
+git remote set-url origin git://new.url.here

@@ -13,23 +13,20 @@
 
 写博客的流程如下 ::
 
- #先在github上建库
+ #先在github上建库,为了方便，我是建立了两个库blog.git和joyyoj.github.com
  $ git clone git@github.com:user/blog.git
  $ cd ./blog
  #master分支下，提交改动
  $ git add .
  $ git commit -m "First post"
  $ git push origin master
- #添加gh-pages分支，并合并master改动，
- $ git branch gh-pages
- $ git checkout gh-pages
- $ git merge master
- #在gh-pages分支下生成html
- $ make html && cp _build/html/* .
+ $ make html && cp _build/html/* ../joyyoj.github.com
+ $ cd ../joyyoj.github.com
  $ git add .
+ $ touch .nojekyll 文件
  $ git commit -m "Publish hello world post"
  #发布到博客上
- $ git push origin gh-pages
+ $ git push origin master
 
  git 其他常用的操作
  Removing untracked files from your git working copy
@@ -37,7 +34,7 @@
  If you just want to remove ignored files, run git clean -f -X
  If you want to remove ignored as well as non-ignored files, run git clean -f -x
 
-
+touch .nojekyll 原因可以参考 `这里 <https://help.github.com/articles/using-jekyll-with-pages/>`_
 
 帮助链接
 ----------
